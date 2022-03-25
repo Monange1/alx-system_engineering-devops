@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#to configure a new server
+# add Custom Header 'X-Served-By' with hostname as value
 
 sudo apt-get update
 sudo apt-get -y install nginx
