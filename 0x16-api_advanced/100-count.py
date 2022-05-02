@@ -1,47 +1,48 @@
 #!/usr/bin/python3
-"""Module for task 3"""
+"""
+recursive function that queries the Reddit API and returns a list
+containing the titles of the all hot posts recursively
+"""
+import requests
 
 
-def count_words(subreddit, word_list, word_count={}, after=None):
-    """Queries the Reddit API and returns the count of words in
-    word_list in the titles of all the hot posts
-    of the subreddit"""
-    import requests
-
-    sub_info = requests.get("https://www.reddit.com/r/{}/hot.json"
-                            .format(subreddit),
-                            params={"after": after},
-                            headers={"User-Agent": "My-User-Agent"},
-                            allow_redirects=False)
-    if sub_info.status_code != 200:
-        return None
-
-    info = sub_info.json()
-
-    hot_l = [child.get("data").get("title")
-             for child in info
-             .get("data")
-             .get("children")]
-    if not hot_l:
-        return None
-
-    word_list = list(dict.fromkeys(word_list))
-
-    if word_count == {}:
-        word_count = {word: 0 for word in word_list}
-
-    for title in hot_l:
-        split_words = title.split(' ')
-        for word in word_list:
-            for s_word in split_words:
-                if s_word.lower() == word.lower():
-                    word_count[word] += 1
-
-    if not info.get("data").get("after"):
-        sorted_counts = sorted(word_count.items(), key=lambda kv: kv[0])
-        sorted_counts = sorted(word_count.items(),
-                               key=lambda kv: kv[1], reverse=True)
-        [print('{}: {}'.format(k, v)) for k, v in sorted_counts if v != 0]
+def count_words(subreddit, word_list, hot_list=[]):
+    """sets base url and calls recursive function to return
+    list of all titles"""
+    word_dict = dict.fromkeys([x.casefold() for x in word_list], 0)
+    url = "https://www.reddit.com/r/{}/hot.json?after=".format(subreddit)
+    r = requests.get(url, allow_redirects=False,
+                     headers={'User-Agent': 'My User Agent 1.0'})
+    if r.status_code == 200:
+        data = r.json()
+        after = data["data"]["after"]
+        for child in data["data"]["children"]:
+            hot_list.append(child["data"]["title"])
+        getpage(subreddit, url, after, hot_list)
+        for key in word_dict:
+            for titles in hot_list:
+                for word in titles.split():
+                    if key == word.casefold():
+                        word_dict[key] += 1
+        word_dict = sorted(word_dict.items(),
+                           key=lambda word_dict: word_dict[1], reverse=True)
+        for results in word_dict:
+            if results[1] != 0:
+                print(results[0] + ':', results[1])
     else:
-        return count_words(subreddit, word_list, word_count,
-                           info.get("data").get("after"))
+        return
+
+
+def getpage(subreddit, url, after, hot_list=[]):
+    """recursively retrieves data on next page if available and
+    stores data in a list"""
+    next_page = url + after
+    r = requests.get(next_page + "&limit=100", allow_redirects=False,
+                     headers={'User-Agent': 'My User Agent 1.0'})
+    data = r.json()
+    next = data["data"]["after"]
+    for child in data["data"]["children"]:
+        hot_list.append(child["data"]["title"])
+    if next is not None:
+        getpage(subreddit, url, next, hot_list)
+    return
